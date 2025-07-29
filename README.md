@@ -61,10 +61,10 @@ This project implements a **Smart Irrigation System** using **Machine Learning**
 ```
 Irrigation_System/
 │
-├── Irrigation_System.ipynb   # Main Jupyter Notebook
-├── irrigation_machine.csv    # Input Dataset (Required)
-├── models/                    # Saved Models (after training)
-│   └── irrigation_model.pkl
+├── irrigstion_SYS_mv.ipynb    # Main Jupyter Notebook
+├── irrigation_machine.csv     # Input Dataset (Required)
+├── Farm_Irrigation_System.pkl # Trained Model File
+├── app.py                     # Streamlit Web App
 ├── README.md                  # Project Documentation
 ```
 
@@ -78,14 +78,23 @@ Irrigation_System/
 pip install -r requirements.txt
 ```
 
+
 2. **Run the notebook**
 
 ```bash
-jupyter notebook Irrigation_System.ipynb
+jupyter notebook irrigstion_SYS_mv.ipynb
 ```
 
 3. **Train the model**  
-   Follow the notebook steps to train and save the model.
+   Follow the notebook steps to train and save the model as `Farm_Irrigation_System.pkl`.
+
+4. **Run the Streamlit Web App**
+
+```bash
+streamlit run app.py
+```
+
+This will launch a web interface where you can input sensor values and get irrigation status predictions for each parcel.
 
 ---
 
