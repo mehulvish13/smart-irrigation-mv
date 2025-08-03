@@ -18,7 +18,10 @@ This project implements a **Smart Irrigation System** using **Machine Learning**
 - 📈 **Data Preprocessing & Normalization**  
   Uses **MinMaxScaler** to normalize features for better model performance.
 
-- 💾 **Model Saving and Reusability**  
+- � **Interactive Web Application**  
+  Streamlit-based web interface for real-time irrigation predictions with accuracy metrics display.
+
+- �💾 **Model Saving and Reusability**  
   Exports trained models using `joblib` for later deployment or inference.
 
 ---
@@ -31,6 +34,7 @@ This project implements a **Smart Irrigation System** using **Machine Learning**
 | Scikit-learn | ML Modeling |
 | Pandas     | Data Manipulation |
 | Matplotlib/Seaborn | Data Visualization |
+| Streamlit  | Web Application Interface |
 | Joblib     | Model Persistence |
 
 ---
@@ -94,7 +98,19 @@ jupyter notebook irrigstion_SYS_mv.ipynb
 streamlit run app.py
 ```
 
-This will launch a web interface where you can input sensor values and get irrigation status predictions for each parcel.
+This will launch a web interface where you can:
+- Input sensor values using interactive sliders
+- Get irrigation status predictions for each parcel
+- View model accuracy metrics in the sidebar
+- See detailed performance information for each parcel
+
+## App Features
+
+The Streamlit web application includes:
+- **Interactive Sensor Input**: 20 sensor value sliders for real-time input
+- **Prediction Display**: Visual status indicators for each of the 3 parcels
+- **Model Performance**: Sidebar showing accuracy metrics for each parcel
+- **User-Friendly Interface**: Clean, organized layout with helpful indicators
 
 ---
 
