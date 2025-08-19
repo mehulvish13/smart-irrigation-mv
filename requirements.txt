@@ -1,0 +1,19 @@
+# Smart Irrigation System - Python Dependencies
+# Core ML and Data Science
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Visualization and Plotting
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.15.0
+
+# Web Application Framework
+streamlit>=1.28.0
+
+# Additional Utilities
+datetime
+json
+time

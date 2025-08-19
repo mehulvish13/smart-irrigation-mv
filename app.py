@@ -1,5 +1,8 @@
 
-# Import required libraries
+# Smart Irrigation System - Advanced ML-Powered Agricultural Dashboard
+# Author: Mehul Vishwakarma
+# Description: Real-time IoT sensor monitoring and irrigation prediction system
+
 import streamlit as st
 import pandas as pd
 import joblib
@@ -10,6 +13,7 @@ from datetime import datetime, timedelta
 import json
 from sklearn.metrics import accuracy_score
 import time
+import base64
 
 # Configure Streamlit page
 st.set_page_config(
@@ -19,9 +23,107 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Function to load image as Base64 (for watermark/background)
+def get_base64_of_bin_file(bin_file):
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except FileNotFoundError:
+        return None
+
+# Load MV logo from project folder
+logo_path = "MV logo.png"
+logo_base64 = get_base64_of_bin_file(logo_path)
+
 # Custom CSS for enhanced styling
 st.markdown("""
 <style>
+    /* Force wider sidebar with fixed width */
+    .css-1d391kg, .css-1lcbmhc, .css-1lcbmhc .css-1544g2n, .st-emotion-cache-1lcbmhc {
+        width: 350px !important;
+        min-width: 350px !important;
+        max-width: 350px !important;
+    }
+    
+    /* Sidebar container styling */
+    .css-1cypcdb, .css-17eq0hr, .st-emotion-cache-1cypcdb, .st-emotion-cache-17eq0hr {
+        width: 350px !important;
+        min-width: 350px !important;
+        max-width: 350px !important;
+    }
+    
+    /* Main content area adjustment for wider sidebar */
+    .css-18e3th9, .css-1d391kg + .css-18e3th9, .st-emotion-cache-18e3th9 {
+        margin-left: 370px !important;
+        width: calc(100% - 370px) !important;
+    }
+    
+    /* Sidebar widget styling - full width */
+    .css-1lcbmhc .stSelectbox > div > div,
+    .css-1lcbmhc .stButton > button,
+    .css-1lcbmhc .stMetric,
+    .css-1lcbmhc .stMarkdown,
+    .st-emotion-cache-1lcbmhc .stSelectbox > div > div,
+    .st-emotion-cache-1lcbmhc .stButton > button,
+    .st-emotion-cache-1lcbmhc .stMetric {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Sidebar button styling */
+    .css-1lcbmhc .stButton > button,
+    .st-emotion-cache-1lcbmhc .stButton > button {
+        width: 100% !important;
+        margin: 2px 0 !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 8px !important;
+        font-size: 14px !important;
+    }
+    
+    /* Sidebar metrics styling */
+    .css-1lcbmhc .stMetric,
+    .st-emotion-cache-1lcbmhc .stMetric {
+        background: rgba(255, 255, 255, 0.1) !important;
+        padding: 8px !important;
+        border-radius: 6px !important;
+        margin: 4px 0 !important;
+    }
+    
+    /* Sidebar selectbox styling */
+    .css-1lcbmhc .stSelectbox > div > div,
+    .st-emotion-cache-1lcbmhc .stSelectbox > div > div {
+        width: 100% !important;
+        margin: 4px 0 !important;
+    }
+    
+    /* Handle collapsed sidebar state */
+    .css-1lcbmhc.css-1544g2n,
+    .st-emotion-cache-1lcbmhc.st-emotion-cache-1544g2n {
+        width: 50px !important;
+        min-width: 50px !important;
+    }
+    
+    /* Main content adjustment when sidebar is collapsed */
+    .css-1544g2n + .css-18e3th9,
+    .st-emotion-cache-1544g2n + .st-emotion-cache-18e3th9 {
+        margin-left: 70px !important;
+        width: calc(100% - 70px) !important;
+    }
+    
+    /* Responsive design for mobile */
+    @media (max-width: 768px) {
+        .css-1lcbmhc, .st-emotion-cache-1lcbmhc {
+            width: 300px !important;
+            min-width: 300px !important;
+        }
+        .css-18e3th9, .st-emotion-cache-18e3th9 {
+            margin-left: 320px !important;
+            width: calc(100% - 320px) !important;
+        }
+    }
+    
+    /* Original styling continues */
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem;
@@ -57,30 +159,76 @@ st.markdown("""
         margin: 10px 0;
         border-left: 4px solid #667eea;
     }
+    
+    /* Additional sidebar content overflow fixes */
+    .css-1lcbmhc .element-container,
+    .st-emotion-cache-1lcbmhc .element-container {
+        width: 100% !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* Fix for sidebar scrolling */
+    .css-1lcbmhc,
+    .st-emotion-cache-1lcbmhc {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+    
+    /* Corner watermark styling */
+    .watermark {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        opacity: 0.8;
+        z-index: 9999;
+        pointer-events: none;
+    }
+    .watermark img {
+        width: 85px;
+        height: auto;
+        border-radius: 8px;
+        transition: opacity 0.3s ease;
+    }
+    .watermark:hover img {
+        opacity: 1.0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state for data persistence
-if 'prediction_history' not in st.session_state:
-    st.session_state.prediction_history = []
-if 'sensor_presets' not in st.session_state:
-    st.session_state.sensor_presets = {
-        "Default": [0.5] * 20,
-        "Dry Season": [0.8, 0.9, 0.2, 0.1, 0.7, 0.8, 0.3, 0.2, 0.9, 0.8, 
-                      0.1, 0.2, 0.8, 0.7, 0.3, 0.4, 0.9, 0.8, 0.2, 0.1],
-        "Wet Season": [0.2, 0.1, 0.8, 0.9, 0.3, 0.2, 0.7, 0.8, 0.1, 0.2, 
-                      0.9, 0.8, 0.2, 0.3, 0.7, 0.6, 0.1, 0.2, 0.8, 0.9],
-        "Optimal": [0.6, 0.5, 0.4, 0.6, 0.5, 0.7, 0.4, 0.5, 0.6, 0.5,
-                   0.4, 0.6, 0.5, 0.4, 0.6, 0.5, 0.4, 0.6, 0.5, 0.4]
-    }
-if 'reset_sensors' not in st.session_state:
-    st.session_state.reset_sensors = False
-if 'randomize_sensors' not in st.session_state:
-    st.session_state.randomize_sensors = False
-if 'load_preset' not in st.session_state:
-    st.session_state.load_preset = False
-if 'selected_preset_name' not in st.session_state:
-    st.session_state.selected_preset_name = "Default"
+# Add corner watermark if logo is available
+if logo_base64:
+    st.markdown(
+        f"""
+        <div class="watermark">
+            <img src="data:image/png;base64,{logo_base64}" alt="MV Logo">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# Initialize session state for data persistence and user interactions
+def initialize_session_state():
+    """Initialize all session state variables with default values"""
+    if 'prediction_history' not in st.session_state:
+        st.session_state.prediction_history = []
+    
+    if 'sensor_presets' not in st.session_state:
+        st.session_state.sensor_presets = {
+            "Default": [0.5] * 20,
+            "Dry Season": [0.8, 0.9, 0.2, 0.1, 0.7, 0.8, 0.3, 0.2, 0.9, 0.8, 
+                          0.1, 0.2, 0.8, 0.7, 0.3, 0.4, 0.9, 0.8, 0.2, 0.1],
+            "Wet Season": [0.2, 0.1, 0.8, 0.9, 0.3, 0.2, 0.7, 0.8, 0.1, 0.2, 
+                          0.9, 0.8, 0.2, 0.3, 0.7, 0.6, 0.1, 0.2, 0.8, 0.9],
+            "Optimal": [0.6, 0.5, 0.4, 0.6, 0.5, 0.7, 0.4, 0.5, 0.6, 0.5,
+                       0.4, 0.6, 0.5, 0.4, 0.6, 0.5, 0.4, 0.6, 0.5, 0.4]
+        }
+    
+    for key in ['reset_sensors', 'randomize_sensors', 'load_preset']:
+        if key not in st.session_state:
+            st.session_state[key] = False
+    
+    if 'selected_preset_name' not in st.session_state:
+        st.session_state.selected_preset_name = "Default"
 
 @st.cache_resource
 def load_model():
@@ -172,6 +320,56 @@ def export_predictions():
         return df.to_csv(index=False)
     return None
 
+def render_sensor_group(group_name, icon, sensor_range, sensor_values):
+    """Render a group of sensors with consistent styling"""
+    start_idx, end_idx = sensor_range
+    st.markdown('<div class="sensor-group">', unsafe_allow_html=True)
+    st.markdown(f"#### {icon} **{group_name} ({start_idx+1}-{end_idx})** - {get_sensor_description(group_name)}")
+    
+    cols = st.columns(5)
+    for i in range(start_idx, end_idx):
+        with cols[i % 5]:
+            # Determine initial value based on actions
+            initial_value = get_sensor_initial_value(i)
+            
+            val = st.slider(
+                f"{icon} Sensor {i+1}",
+                min_value=0.0,
+                max_value=1.0,
+                value=initial_value,
+                step=0.01,
+                key=f"sensor_{i}",
+                help=f"{group_name.split()[0]} sensor {i+1} reading"
+            )
+            sensor_values.append(val)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    return sensor_values
+
+def get_sensor_description(group_name):
+    """Get description for sensor group"""
+    descriptions = {
+        "Climate Sensors": "Temperature, Humidity, Weather",
+        "Soil Moisture Sensors": "Water Content, Soil Humidity", 
+        "Plant Health Sensors": "Growth, Leaf Moisture, Plant Stress",
+        "Environmental Sensors": "Wind, Light, Atmospheric Pressure"
+    }
+    return descriptions.get(group_name, "")
+
+def get_sensor_initial_value(i):
+    """Get initial value for sensor based on current state"""
+    if st.session_state.load_preset:
+        return st.session_state.sensor_presets[st.session_state.selected_preset_name][i]
+    elif st.session_state.reset_sensors:
+        return 0.5
+    elif st.session_state.randomize_sensors:
+        return np.random.random()
+    else:
+        return st.session_state.get(f"sensor_{i}", 0.5)
+
+# Initialize application
+initialize_session_state()
+
 # Load model and data
 model = load_model()
 df, parcel_accuracies, overall_accuracy = load_data()
@@ -261,136 +459,28 @@ with st.sidebar:
                 use_container_width=True
             )
 
-# Main Content Area - All 20 Sensors displayed
+# Main Content Area - Environmental Sensor Configuration
 st.markdown("### 🌡️ Environmental Sensor Configuration")
 st.markdown("**Configure all 20 environmental sensors for irrigation prediction**")
 
 # Create sensor values list
 sensor_values = []
 
-# Group 1: Climate Sensors (1-5)
-st.markdown('<div class="sensor-group">', unsafe_allow_html=True)
-st.markdown("#### 🌡️ **Climate Sensors (1-5)** - Temperature, Humidity, Weather")
-cols = st.columns(5)
-for i in range(5):
-    with cols[i]:
-        # Determine initial value based on actions
-        initial_value = 0.5
-        if st.session_state.load_preset:
-            initial_value = st.session_state.sensor_presets[st.session_state.selected_preset_name][i]
-        elif st.session_state.reset_sensors:
-            initial_value = 0.5
-        elif st.session_state.randomize_sensors:
-            initial_value = np.random.random()
-        else:
-            initial_value = st.session_state.get(f"sensor_{i}", 0.5)
-        
-        val = st.slider(
-            f"🌡️ Sensor {i+1}",
-            min_value=0.0,
-            max_value=1.0,
-            value=initial_value,
-            step=0.01,
-            key=f"sensor_{i}",
-            help=f"Climate sensor {i+1} reading"
-        )
-        sensor_values.append(val)
-st.markdown('</div>', unsafe_allow_html=True)
+# Render sensor groups using helper function
+sensor_groups = [
+    ("Climate Sensors", "🌡️", (0, 5)),
+    ("Soil Moisture Sensors", "💧", (5, 10)),
+    ("Plant Health Sensors", "🌱", (10, 15)),
+    ("Environmental Sensors", "�", (15, 20))
+]
 
-# Group 2: Soil Moisture Sensors (6-10)
-st.markdown('<div class="sensor-group">', unsafe_allow_html=True)
-st.markdown("#### 💧 **Soil Moisture Sensors (6-10)** - Water Content, Soil Humidity")
-cols = st.columns(5)
-for i in range(5, 10):
-    with cols[i-5]:
-        # Determine initial value based on actions
-        initial_value = 0.5
-        if st.session_state.load_preset:
-            initial_value = st.session_state.sensor_presets[st.session_state.selected_preset_name][i]
-        elif st.session_state.reset_sensors:
-            initial_value = 0.5
-        elif st.session_state.randomize_sensors:
-            initial_value = np.random.random()
-        else:
-            initial_value = st.session_state.get(f"sensor_{i}", 0.5)
-        
-        val = st.slider(
-            f"💧 Sensor {i+1}",
-            min_value=0.0,
-            max_value=1.0,
-            value=initial_value,
-            step=0.01,
-            key=f"sensor_{i}",
-            help=f"Soil moisture sensor {i+1} reading"
-        )
-        sensor_values.append(val)
-st.markdown('</div>', unsafe_allow_html=True)
+for group_name, icon, sensor_range in sensor_groups:
+    sensor_values = render_sensor_group(group_name, icon, sensor_range, sensor_values)
 
-# Group 3: Plant Health Sensors (11-15)
-st.markdown('<div class="sensor-group">', unsafe_allow_html=True)
-st.markdown("#### 🌱 **Plant Health Sensors (11-15)** - Growth, Leaf Moisture, Plant Stress")
-cols = st.columns(5)
-for i in range(10, 15):
-    with cols[i-10]:
-        # Determine initial value based on actions
-        initial_value = 0.5
-        if st.session_state.load_preset:
-            initial_value = st.session_state.sensor_presets[st.session_state.selected_preset_name][i]
-        elif st.session_state.reset_sensors:
-            initial_value = 0.5
-        elif st.session_state.randomize_sensors:
-            initial_value = np.random.random()
-        else:
-            initial_value = st.session_state.get(f"sensor_{i}", 0.5)
-        
-        val = st.slider(
-            f"🌱 Sensor {i+1}",
-            min_value=0.0,
-            max_value=1.0,
-            value=initial_value,
-            step=0.01,
-            key=f"sensor_{i}",
-            help=f"Plant health sensor {i+1} reading"
-        )
-        sensor_values.append(val)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Group 4: Environmental Sensors (16-20)
-st.markdown('<div class="sensor-group">', unsafe_allow_html=True)
-st.markdown("#### 🌍 **Environmental Sensors (16-20)** - Wind, Light, Atmospheric Pressure")
-cols = st.columns(5)
-for i in range(15, 20):
-    with cols[i-15]:
-        # Determine initial value based on actions
-        initial_value = 0.5
-        if st.session_state.load_preset:
-            initial_value = st.session_state.sensor_presets[st.session_state.selected_preset_name][i]
-        elif st.session_state.reset_sensors:
-            initial_value = 0.5
-        elif st.session_state.randomize_sensors:
-            initial_value = np.random.random()
-        else:
-            initial_value = st.session_state.get(f"sensor_{i}", 0.5)
-        
-        val = st.slider(
-            f"🌍 Sensor {i+1}",
-            min_value=0.0,
-            max_value=1.0,
-            value=initial_value,
-            step=0.01,
-            key=f"sensor_{i}",
-            help=f"Environmental sensor {i+1} reading"
-        )
-        sensor_values.append(val)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Reset the action flags after processing
-if st.session_state.load_preset:
-    st.session_state.load_preset = False
-if st.session_state.reset_sensors:
-    st.session_state.reset_sensors = False
-if st.session_state.randomize_sensors:
-    st.session_state.randomize_sensors = False
+# Reset action flags after processing
+for flag in ['load_preset', 'reset_sensors', 'randomize_sensors']:
+    if st.session_state.get(flag, False):
+        st.session_state[flag] = False
 
 # Sensor Overview and Statistics Section
 st.markdown("---")
