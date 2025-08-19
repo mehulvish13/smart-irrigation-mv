@@ -115,16 +115,16 @@ st.markdown(
     /* Top-right watermark */
     .watermark {
         position: fixed;
-        top: 20px;
-        right: 20px;
-        opacity: 0.8;
+        bottom: 1vh;
+        right: 0px;
+        opacity: 0.7;
         z-index: 9999;
         pointer-events: none; /* don't block clicks */
     }
     .watermark img {
-        width: 85px;
+        width: 75px;
         height: auto;
-        border-radius: 8px;
+        border-radius: 0px;
         transition: opacity 0.3s ease;
     }
     .watermark:hover img {
@@ -133,7 +133,7 @@ st.markdown(
     .watermark svg {
         width: 85px;
         height: auto;
-        border-radius: 8px;
+        border-radius: 0px;
         transition: opacity 0.3s ease;
         display: block;
     }
