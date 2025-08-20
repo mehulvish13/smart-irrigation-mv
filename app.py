@@ -115,7 +115,7 @@ st.markdown(
     /* Top-right watermark */
     .watermark {
         position: fixed;
-        bottom: 1vh;
+        bottom: 6vh;
         right: 0px;
         opacity: 0.7;
         z-index: 9999;
