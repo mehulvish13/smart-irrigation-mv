@@ -91,9 +91,9 @@ st.markdown(
     }
     .sensor-group {
         background: #f8f9fa;
-        padding: 15px;
+        padding: 20px;
         border-radius: 10px;
-        margin: 10px 0;
+        margin: 15px 0;
         border-left: 4px solid #667eea;
     }
     .prediction-card {
@@ -102,14 +102,17 @@ st.markdown(
         padding: 1rem;
         margin: 0.5rem;
         text-align: center;
+        color: #333333 !important;
     }
     .irrigation-on {
         border-color: #4CAF50 !important;
         background: linear-gradient(135deg, #e8f5e8, #f1f8e9);
+        color: #1B5E20 !important;
     }
     .irrigation-off {
         border-color: #f44336 !important;
         background: linear-gradient(135deg, #fde7e7, #fef2f2);
+        color: #C62828 !important;
     }
 
     /* Top-right watermark */
@@ -181,7 +184,7 @@ def initialize_session_state():
                         0.4, 0.6, 0.5, 0.4, 0.6, 0.5, 0.4, 0.6, 0.5, 0.4]
         }
 
-    for key in ['reset_sensors', 'randomize_sensors', 'load_preset']:
+    for key in ['reset_sensors', 'randomize_sensors', 'load_preset', 'show_help_modal']:
         if key not in st.session_state:
             st.session_state[key] = False
 
@@ -211,7 +214,6 @@ def load_data():
 
 model = load_model()
 df, parcel_accuracies, overall_accuracy = load_data()
-avg_accuracy = float(np.mean(parcel_accuracies))
 
 # ------------- Charts & Helpers -------------
 def create_sensor_visualization(sensor_values):
@@ -305,9 +307,65 @@ def render_sensor_group(group_name, icon, sensor_range, sensor_values):
     st.markdown('</div>', unsafe_allow_html=True)
     return sensor_values
 
+@st.dialog("📖 How to Use Smart Irrigation System", width="large")
+def show_how_to_use_modal():
+    """Display a modal with instructions on how to use the application."""
+    
+    # Main content in columns for better width utilization
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### 🎯 Getting Started")
+        st.markdown("""
+        1. **Model Status:** Check sidebar status
+        2. **Configure Sensors:** Adjust 20 sensors below
+        3. **Get Prediction:** Click predict button
+        """)
+        
+        st.markdown("#### 🌡️ Sensor Groups")
+        st.markdown("""
+        **🌡️ Climate (1-5):** Temperature, Humidity  
+        **💧 Soil Moisture (6-10):** Water content  
+        **🌱 Plant Health (11-15):** Growth metrics  
+        **🌍 Environmental (16-20):** Wind, Light
+        """)
+    
+    with col2:
+        st.markdown("#### ⚡ Quick Actions")
+        st.markdown("""
+        **🎛️ Presets:** Default, Dry/Wet Season, Optimal  
+        **🔄 Reset:** Set all sensors to 0.5  
+        **🎲 Randomize:** Generate test values
+        """)
+        
+        st.markdown("#### 📊 Understanding Results")
+        st.markdown("""
+        **🟢 ON:** Zone needs watering  
+        **🔴 OFF:** Sufficient moisture  
+        **📈 Confidence:** Model accuracy  
+        **💧 Usage:** Water estimation
+        """)
+    
+    st.info("💡 **Pro Tips:** Use presets for quick setup • Monitor history for patterns • Check confidence before decisions")
+    
+    if st.button("✅ Got it!", type="primary", use_container_width=True):
+        st.session_state.show_help_modal = False
+        st.rerun()
+
 # ------------- Header -------------
-st.title("🌾 Advanced Smart Irrigation Prediction System")
-st.markdown("### AI-Powered Agricultural Water Management Dashboard")
+# Title and small Help button in top-right corner
+col1, col2 = st.columns([5, 1])
+with col1:
+    st.title("🌾 Smart Irrigation System")
+    st.markdown("### AI-Powered Water Management Dashboard")
+with col2:
+    st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)  # Add top margin to align
+    if st.button("📖 Help", type="secondary", key="help_button"):
+        st.session_state.show_help_modal = True
+
+# Display help modal if requested
+if st.session_state.get('show_help_modal', False):
+    show_how_to_use_modal()
 
 if model is None:
     st.stop()
@@ -316,29 +374,6 @@ if model is None:
 with st.sidebar:
     st.title("📊 System Dashboard")
 
-    st.markdown("### 🎯 Model Performance")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.metric("Overall", f"{overall_accuracy*100:.1f}%")
-        st.metric("Parcel 0", f"{parcel_accuracies[0]*100:.1f}%")
-    with c2:
-        st.metric("Average", f"{avg_accuracy*100:.1f}%")
-        st.metric("Parcel 1", f"{parcel_accuracies[1]*100:.1f}%")
-    st.metric("Parcel 2", f"{parcel_accuracies[2]*100:.1f}%")
-
-    st.markdown("---")
-    st.markdown("### 🎛️ Quick Presets")
-    selected_preset = st.selectbox(
-        "Choose a preset configuration:",
-        options=list(st.session_state.sensor_presets.keys()),
-        key="preset_selector"
-    )
-    if st.button("Load Preset", use_container_width=True):
-        st.session_state.load_preset = True
-        st.session_state.selected_preset_name = selected_preset
-        st.rerun()
-
-    st.markdown("---")
     st.markdown("### ⚡ Quick Actions")
     if st.button("🔄 Reset All Sensors", use_container_width=True):
         st.session_state.reset_sensors = True
@@ -380,15 +415,21 @@ with st.sidebar:
 st.markdown("### 🌡️ Environmental Sensor Configuration")
 st.markdown("**Configure all 20 environmental sensors for irrigation prediction**")
 
+# Simple sensor input without groups
 sensor_values = []
-sensor_groups = [
-    ("Climate Sensors", "🌡️", (0, 5)),
-    ("Soil Moisture Sensors", "💧", (5, 10)),
-    ("Plant Health Sensors", "🌱", (10, 15)),
-    ("Environmental Sensors", "🌍", (15, 20)),  # FIXED ICON
-]
-for group_name, icon, sensor_range in sensor_groups:
-    sensor_values = render_sensor_group(group_name, icon, sensor_range, sensor_values)
+cols = st.columns(4)
+for i in range(20):
+    with cols[i % 4]:
+        val = st.slider(
+            f"Sensor {i+1}",
+            min_value=0.0,
+            max_value=1.0,
+            value=get_sensor_initial_value(i),
+            step=0.01,
+            key=f"sensor_{i}",
+            help=f"Environmental sensor {i+1} reading"
+        )
+        sensor_values.append(val)
 
 # reset flags
 for flag in ['load_preset', 'reset_sensors', 'randomize_sensors']:
